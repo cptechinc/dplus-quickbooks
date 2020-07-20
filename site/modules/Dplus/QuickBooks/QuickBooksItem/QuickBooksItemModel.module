@@ -1,0 +1,58 @@
+<?php namespace ProcessWire;
+
+/**
+ * Class for Reading Item from Dplus Database
+ */
+class QuickBooksItemModel extends WireData implements Module {
+	
+
+/* =============================================================
+	QuickBook Conversion Functions
+============================================================= */
+
+	/**
+	 * Create QB Invoice  array from Dplus Order
+	 *
+	 * @return array
+	 */
+	public function qb_array_nonstock() {
+		return [
+			"Name" => "1111Office Sudfsfasdfpplies",
+			"Description" => "This is the sales description.",
+			"Active" => true,
+			"FullyQualifiedName" => "Office Supplies",
+			"Taxable" => true,
+			"UnitPrice" => 100,
+			"Type" => "NonInventory",
+			"PurchaseCost"=> 0,
+			"TrackQtyOnHand" => false,
+		];
+	}
+
+	public function create_dplus_taxed_item() {
+		$array = $this->qb_array_nonstock();
+		$array['Name'] = 'TaxedTotal';
+		$array['Description'] = 'Total Taxed Amount';
+		$array['FullyQualifiedName'] = 'Total Taxed Amount';
+		return $array;
+	}
+
+/* =============================================================
+	ProcessWire Module Functions
+============================================================= */
+	/**
+	 * ProcessWire Module Info
+	 *
+	 * @return void
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'QuickBooks Invoice Model',
+			'version' => 101,
+			'summary' => 'Handles Quickbooks Invoice Data Modeling',
+			'singular' => true,
+			'autoload' => true,
+			'requires' => array()
+		);
+	}
+	}

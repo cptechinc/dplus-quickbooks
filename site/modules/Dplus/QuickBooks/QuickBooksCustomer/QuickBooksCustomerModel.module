@@ -1,0 +1,180 @@
+<?php namespace ProcessWire;
+
+use CustomerQuery, Customer;
+use CustomerExternalRefQuery, CustomerExternalRef;
+use PhoneBookQuery, PhoneBook;
+
+/**
+ * Class for Reading Customer from Dplus Database
+ */
+class QuickBooksCustomerModel extends WireData implements Module {
+
+	/**
+	 * Returns if Customer ID exists
+	 *
+	 * @param  string $custID
+	 * @return bool
+	 */
+	public function exists_id($custID) {
+		$q = CustomerQuery::create();
+		$q->filterByCustId($custID);
+		return boolval($q->count());
+	}
+	
+	/**
+	 * Return Customer By Customer ID
+	 *
+	 * @param  string $custID
+	 * @return Customer
+	 */
+	public function customer_by_id($custID) {
+		$q = CustomerQuery::create();
+		return $q->findOneByCustid($custID);
+	}
+
+	/**
+	 * Return All Custids
+	 *
+	 * @return ObjectCollection
+	 */
+	public function all_custids() {
+		$q = CustomerQuery::create();
+		$q->select(Customer::get_aliasproperty('Custid'));
+		return $q->find();
+	}
+
+	/**
+	 * Returns if Customer has an External Reference
+	 *
+	 * @param  string $custID
+	 * @return bool
+	 */
+	public function has_externalref($custID) {
+		$q = CustomerExternalRefQuery::create();
+		$q->filterByCustid($custID);
+		$q->filterByShiptoid('');
+		return boolval($q->count());
+	}
+
+	/**
+	 * Return Customer External Reference
+	 *
+	 * @param  string $custID
+	 * @return string
+	 */
+	public function get_externalref($custID) {
+		$q = CustomerExternalRefQuery::create();
+		$q->select(CustomerExternalRef::get_aliasproperty('custid_ext'));
+		$q->filterByCustid($custID);
+		$q->filterByShiptoid('');
+		return $q->findOne();
+	}
+
+	/**
+	 * Creates new External Reference for Customer
+	 *
+	 * @param  string $custID
+	 * @param  string $ref
+	 * @return void
+	 */
+	public function create_externalref($custID, $ref) {
+		if (!$this->has_externalref($custID)) {
+			$success = $this->create_externalref_record($custID, $ref);
+
+			if ($success) {
+				$this->request_custlink_update($custID);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public function create_externalref_record($custID, $ref) {
+		if (!$this->has_externalref($custID)) {
+			$record = new CustomerExternalRef();
+			$record->setCustid($custID);
+			$record->setCustid_ext($ref);
+			$record->setDate(date('Ymd'));
+			$record->setTime(date('His'));
+			return $record->save();
+		}
+	}
+
+	protected function request_custlink_update($custID) {
+		$data = array('UPDATECUSTLINK', "CUSTID=$custID", 'SHIPID=');
+		$cgi = $this->wire('config')->cgis['database'];
+		$requestor = $this->wire('modules')->get('DplusRequest');
+		$requestor->write_dplusfile($data, session_id());
+		$requestor->cgi_request($cgi, session_id());
+	}
+
+/* =============================================================
+	QuickBook Conversion Functions
+============================================================= */
+	/**
+	 * Create QB customer array from Dplus Customer
+	 *
+	 * @param  Customer $customer
+	 * @return array
+	 */
+	public function qb_customer_array(Customer $customer) {
+		$q = PhoneBookQuery::create();
+		$q->filterTypeCustomer();
+		$q->filterByKey1($customer->custid);
+		$contact = $q->findOne();
+
+		return [
+			'ARAccountRef' => $customer->custid,
+			'ClientCompanyId' => $customer->custid,
+			"BillAddr" => [
+				"Line1"=>  $customer->address1,
+				"Line2"=>  $customer->address2,
+				"City"=>  $customer->city,
+				"Country"=>  $customer->country,
+				"CountrySubDivisionCode"=>	$customer->state,
+				"PostalCode"=>	$customer->zip
+			],
+			"Notes" =>	$customer->custid,
+			"Title"=>  "",
+			"GivenName"=>  "",
+			"MiddleName"=>	$contact->contactname ? $contact->contactname : $contact->name,
+			"FamilyName"=>	"",
+			"Suffix"=>	"",
+			"AcctNum" => $customer->custid,
+			"FullyQualifiedName"=>	$customer->name,
+			"CompanyName"=>  $customer->custid,
+			"DisplayName"=>  $customer->name,
+			"ContactName" => $contact->contactname ? $contact->contactname : $contact->name,
+			"AltContactName" => $contact->contactname ? $contact->contactname : $contact->name,
+			"PrimaryPhone"=>  [
+				"FreeFormNumber"=>	$contact->phone
+			],
+			"PrimaryEmailAddr"=>  [
+				"Address" => $contact->email
+			]
+		];
+	}
+
+/* =============================================================
+	ProcessWire Module Functions
+============================================================= */
+	/**
+	 * ProcessWire Module Info
+	 *
+	 * @return void
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'QuickBooks Customer QuickBooks',
+			'version' => 101,
+			'summary' => 'Handles Quickbooks Customer Calls from QuickBooks',
+			'singular' => true,
+			'autoload' => true,
+			'requires' => array(
+				'QuickBooks',
+				'QuickBooksCustomerDplus',
+				'QuickBooksCustomerModel'
+			)
+		);
+	}
+	}

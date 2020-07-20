@@ -1,0 +1,110 @@
+<?php namespace ProcessWire;
+
+use QuickBooksOnline\API\Facades\Invoice as InvoiceApi;
+use QuickBooksOnline\API\Data\IPPInvoice as InvoiceData;
+use QuickBooksOnline\API\DataService\DataService;
+
+/**
+ * QuickBooks Invoice API Caller
+ * @property DataService $api QuickBooks API Service
+ */
+class QuickBooksInvoiceApi extends QuickBooks implements Module {
+	
+	/**
+	 * Returns Created Invoice from QuickBooks
+	 *
+	 * @param InvoiceData $invoice
+	 * @return array
+	 */
+	public function create(InvoiceData $invoice) {
+		$this->clear_response();
+		$result = $this->api->Add($invoice);
+		$error  = $this->api->getLastError();
+
+		if ($error) {
+			$this->api_error($error);
+		} else {
+			$this->response['result']['invoice'] = $result;
+		}
+		return $this->response;
+	}
+
+	/**
+	 * Returns Updated Invoice from QuickBooks
+	 *
+	 * @param InvoiceData $invoice
+	 * @return array
+	 */
+	public function update(InvoiceData $original, array $new) {
+		$updated = InvoiceApi::update($original, $new);
+		$result = $this->api->Update($updated);
+		$error  = $this->api->getLastError();
+
+		if ($error) {
+			$this->api_error($error);
+		} else {
+			$this->response['result']['customer'] = $result;
+		}
+		return $this->response;
+	}
+
+	/**
+	 * Return If Our Invoice Number Exists at QuickBooks
+	 *
+	 * @param  string $ordn
+	 * @return bool
+	 */
+	public function exists($ordn) {
+		$result = $this->api->Query("SELECT COUNT(*) FROM Invoice where DocNumber='$ordn'");
+		$error = $this->api->getLastError();
+
+		if ($error) {
+			$this->api_error($error);
+			return false;
+		} else {
+			return boolval($result);
+		}
+	}
+	/**
+	 * Return QuickBooks Invoice
+	 *
+	 * @param  string $ordn
+	 * @return InvoiceData
+	 */
+	public function read($ordn) {
+		$result = $this->api->Query("SELECT * FROM Invoice where DocNumber='$ordn'");
+		$error = $this->api->getLastError();
+
+		if ($error) {
+			$this->api_error($error);
+			return false;
+		} else {
+			return $result;
+		}
+	}
+
+/* =============================================================
+	ProcessWire Module Functions
+============================================================= */
+	public function className($options = NULL) {
+		return 'QuickBooksInvoiceApi';
+	}
+
+	/**
+	 * ProcessWire Module Info
+	 *
+	 * @return void
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'QuickBooks Invoice API',
+			'version' => 101,
+			'summary' => 'Handles Quickbooks Invoice API Calls',
+			'singular' => true,
+			'autoload' => true,
+			'requires' => array(
+				'QuickBooks',
+			),
+		);
+	}
+}

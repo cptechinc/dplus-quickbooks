@@ -1,0 +1,101 @@
+<?php namespace ProcessWire;
+
+use CustomerQuery, Customer;
+
+use QuickBooksOnline\API\Facades\Invoice as InvoiceApi;
+use QuickBooksOnline\API\Data\IPPInvoice as InvoiceData;
+
+/**
+ * Wrapper Class for Handling Invoice Import / Exports to QuickBooks
+ * 
+ * @property QuickBooksInvoiceApi $api QuickBooks Invoice API Caller
+ */
+class QuickBooksInvoice extends WireData implements Module {
+	public function connect() {
+		$this->api->connect();
+	}
+
+	/**
+	 * Sends Invoice to QuickBooks
+	 *
+	 * @param  string $ordn
+	 * @return array
+	 */
+	public function export_many(array $ordns) {
+		$responses = array();
+
+		foreach ($ordns as $ordn) {
+			$responses[] = $this->export($ordn);
+		}
+		return $responses;
+	}
+
+	/**
+	 * Sends Invoice to QuickBooks
+	 *
+	 * @param  string $ordn
+	 * @return array
+	 */
+	public function export($ordn) {
+		if ($this->api->exists($ordn)) {
+			$original = $this->api->read($ordn);
+			$order = $this->model->order($ordn);
+
+			if ($this->model->exists($ordn)) {
+				$newdata = $this->model->qb_invoice_array($order);
+				return $this->api->update($original, $newdata);
+			} else {
+				$this->api->response['error'] = true;
+				$this->api->response['message'] = "Dplus Order $ordn does not exist";
+			}
+		} else {
+			$order = $this->model->order($ordn);
+			$invoice = InvoiceApi::create($this->model->qb_invoice_array($order));
+			return $this->api->create($invoice);
+		}
+	}
+
+	/**
+	 * Retreive Invoice from QuickBooks
+	 *
+	 * @param  string $ordn
+	 * @return bool
+	 */
+	public function import($ordn) {
+		if ($this->api->exists($ordn)) {
+			return $this->api->read($ordn);
+		} else {
+			$this->api->response['error'] = true;
+			$this->api->response['message'] = "Invoice tied to Order #$ordn does not exist";
+		}
+		return $this->api->response;
+	}
+	
+/* =============================================================
+	ProcessWire Module Functions
+============================================================= */
+	public function init() {
+		$this->api   = $this->wire('modules')->get('QuickBooksInvoiceApi');
+		$this->model = $this->wire('modules')->get('QuickBooksInvoiceModel');
+	}
+
+	/**
+	 * ProcessWire Module Info
+	 *
+	 * @return array
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'QuickBooks Invoice Factory',
+			'version' => 101,
+			'summary' => 'Handles Requests to Update QuickBooks Invoice',
+			'singular' => true,
+			'autoload' => true,
+			'requires' => 'QuickBooks',
+			'installs' => array(
+				'QuickBooksInvoiceApi',
+				'QuickBooksInvoiceModel',
+			)
+		);
+	}
+}

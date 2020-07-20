@@ -1,0 +1,123 @@
+<?php namespace ProcessWire;
+
+use QuickBooksOnline\API\Data\IPPCustomer as QbCustomerData;
+
+/**
+ * Handles Sending Requests starting from QuickBooks Data
+ * 
+ * @property QuickBooksCustomerApi   $api   QuickBooks Customer API Caller
+ * @property QuickBooksCustomerModel $model Handles Database Model for Customer
+ */
+class QuickBooksCustomerQb extends QuickBooksCustomerDplus implements Module {
+	public function connect() {
+		$this->api->connect();
+	}
+
+/* =============================================================
+	Public Facing Functions
+============================================================= */
+	
+	/**
+	 * Send Create / Update of Customer by Customer ID (dplud)
+	 *
+	 * @param  string $custID Customer ID (dplud)
+	 * @return void
+	 */
+	public function export_from_id($custID) {
+		return $this->update_from_id_dplus($custID);
+	}
+
+	/**
+	 * Update All Dplus Customers at QuickBooks
+	 *
+	 * @return bool
+	 */
+	public function export_all() {
+		$custIDs = $this->model->all_custids();
+		return $this->export_multi($custIDs->toArray());
+	}
+
+	/**
+	 * Update Selected Dplus Customers at QuickBooks
+	 *
+	 * @param  array $custIDs Dplus Customer IDs
+	 * @return array
+	 */
+	public function export_multi(array $custIDs) {
+		$responses = array();
+		
+		foreach ($custIDs as $custID) {
+			$responses[$custID] = $this->export_from_id($custID);
+		}
+		return $responses;
+	}
+
+/* =============================================================
+	Source Dplus Functions
+============================================================= */
+	/**
+	 * Send Update of Customer by Customer ID (dplus)
+	 * 
+	 * @param  string $custID Customer ID (dplus)
+	 * @return void
+	 */
+	public function update_from_id($id) {
+		if ($this->api->exists_id_qb($id)) {
+			$customer = $this->api->read_by_id_qb($id);
+			$this->update_from_customer($customer);
+		} else {
+			$this->api->response['error'] = true;
+			$this->api->response['message'] = "QuickBooks Customer $id does not exist [UPDATE]";
+		}
+	}
+	
+	/**
+	 * Request Customer Update at QuickBooks
+	 *
+	 * @param QbCustomerData $original Dplus Customer
+	 * @return array
+	 */
+	protected function update_from_customer($original) {
+		if ($this->api->exists_id_qb($original->custid)) {
+			if ($this->model->exists_id($original->name)) {
+				$customer_dplus = $this->model->customer_by_id($original->name);
+				$new = $this->model->qb_customer_array($customer_dplus);
+				return $this->api->update($original, $new);
+			} else {
+				$this->api->response['error'] = true;
+				$this->api->response['message'] = "QuickBooks Customer $original->id does not exist in Dplus as $customer->name [UPDATE]";
+			}
+		} else {
+			$this->api->response['error'] = true;
+			$this->api->response['message'] = "QuickBooks Customer $original->id does not exist [UPDATE]";
+		}
+		return $this->api->response;
+	}
+
+/* =============================================================
+	ProcessWire Module Functions
+============================================================= */
+	public function init() {
+		$this->api   = $this->wire('modules')->get('QuickBooksCustomerApi');
+		$this->model = $this->wire('modules')->get('QuickBooksCustomerModel');
+	}
+
+	/**
+	 * ProcessWire Module Info
+	 *
+	 * @return void
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'QuickBooks Customer',
+			'version' => 101,
+			'summary' => 'QuickBooks Customer',
+			'singular' => true,
+			'autoload' => true,
+			'requires' => 'QuickBooks',
+			'installs' => array(
+				'QuickBooksCustomerDplus',
+			)
+		);
+	}
+}

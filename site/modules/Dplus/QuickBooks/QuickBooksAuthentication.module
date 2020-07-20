@@ -1,0 +1,126 @@
+<?php namespace ProcessWire;
+
+use QuickBooksOnline\API\DataService\DataService;
+use QuickBooksOnline\API\Core\OAuth\OAuth2\OAuth2AccessToken as AccessToken;
+use Purl\Url;
+
+class QuickBooksAuthentication extends WireData implements Module {
+	const FORMAT_DATE = 'Y/m/d H:i:s';
+
+	public function __construct() {
+		$this->dataservice = false;
+	}
+
+	public function oauth_config() {
+		return array(
+			'authorizationRequestUrl' => 'https://appcenter.intuit.com/connect/oauth2',
+			'tokenEndPointUrl' => 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',
+			'client_id' => $this->credentials->client_id,
+			'client_secret' => $this->credentials->client_secret,
+			'oauth_scope' => 'com.intuit.quickbooks.accounting',
+			'openID_scope' => 'openid profile email',
+			'oauth_redirect_uri' => $this->wire('pages')->get('template=callback')->httpUrl()
+		);
+	}
+
+	public function dataservice_default() {
+		$c = $this->oauth_config();
+	
+		$dataservice = DataService::Configure(array(
+			'auth_mode' => 'oauth2',
+			'ClientID' => $c['client_id'],
+			'ClientSecret' =>  $c['client_secret'],
+			'RedirectURI' => $c['oauth_redirect_uri'],
+			'scope' => $c['oauth_scope'],
+			'baseUrl' => "development"
+		));
+		return $dataservice;
+	}
+
+	public function dataservice_refresh(AccessToken $token) {
+		$c = $this->oauth_config();
+		return DataService::Configure(array(
+			'auth_mode' => 'oauth2',
+			'ClientID' => $c['client_id'],
+			'ClientSecret' =>  $c['client_secret'],
+			'accessTokenKey' =>  $token->getAccessToken(),
+			'refreshTokenKey' => $token->getRefreshToken(),
+			'QBORealmID' => $token->getRealmID(),
+			'baseUrl' => "development"
+		));
+	}
+
+	public function connect() {
+		$session = $this->wire('session');
+		$this->dataservice = $this->dataservice_default();
+
+		$loginhelper = $this->dataservice->getOAuth2LoginHelper();
+
+		if ($session->token) { 
+			$token = $session->token;
+			$expires = strtotime($token->getAccessTokenExpiresAt());
+
+			if ($expires < strtotime('now')) {
+				$this->dataservice = $this->dataservice_refresh($session->token);
+				$loginhelper = $this->dataservice->getOAuth2LoginHelper();
+				$token = $loginhelper->refreshToken();
+				$session->token = $token;
+			} else {
+				$this->dataservice->updateOAuth2Token($token);
+			}
+			
+		} else {
+			$session->returnto = $this->wire('page')->fullURL->getUrl();
+			$session->redirect($loginhelper->getAuthorizationCodeURL());
+		}
+		return $this->dataservice;
+	}
+
+	public function import_token(Url $url) {
+		$session = $this->wire('session');
+		$this->dataservice = $this->dataservice_default();
+		$loginhelper = $this->dataservice->getOAuth2LoginHelper();
+
+		$query = $url->query;
+
+		/* Update the OAuth2Token */
+		$token = $loginhelper->exchangeAuthorizationCodeForToken($query->get('code'), $query->get('realmId'));
+		$this->dataservice->updateOAuth2Token($token);
+
+		/* Setting the accessToken for session variable */
+		$session->token = $token;
+	}
+
+
+	public function jsontoken($token) {
+		return array(
+			'token_type' => 'bearer',
+			'access_token' => $token->gettoken(),
+			'refresh_token' => $token->getRefreshToken(),
+			'x_refresh_token_expires_in' => $token->getRefreshTokenExpiresAt(),
+			'expires_in' => $token->gettokenExpiresAt()
+		);
+	}
+/* =============================================================
+	ProcessWire Module Functions
+============================================================= */
+	public function init() {
+		$modules = $this->wire('modules');
+		$this->credentials = $modules->get('QuickBooksCredentials');
+	}
+
+	/**
+	 * ProcessWire Module Info
+	 *
+	 * @return void
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'QuickBooks',
+			'version' => 101,
+			'summary' => 'QuickBooks',
+			'singular' => true,
+			'autoload' => true,
+		);
+	}
+}

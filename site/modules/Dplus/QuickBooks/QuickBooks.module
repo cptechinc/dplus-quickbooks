@@ -1,0 +1,73 @@
+<?php namespace ProcessWire;
+
+use QuickBooksOnline\API\Core\HttpClients\FaultHandler;
+use QuickBooksOnline\API\DataService\DataService;
+
+/**
+ * Base QuickBooks API Caller class
+ * @property DataService $api QuickBooks API Service
+ */
+class QuickBooks extends WireData implements Module {
+	const DEFAULT_RESPONSE = array(
+		'error' => false,
+		'message' => '',
+		'result' => false
+	);
+
+	public $response = array();
+
+	public function connect() {
+		$this->api = $this->authentication->connect();
+	}
+
+	public function clear_response() {
+		$this->response = self::DEFAULT_RESPONSE;
+	}
+
+	public function api_error(FaultHandler $error) {
+		$this->response['error'] = true;
+		$this->response['message'] = $error->getOAuthHelperError();
+		$this->response['api'] = array(
+			'status'   => $error->getHttpStatusCode(),
+			'helper'   => $error->getOAuthHelperError(),
+			'response' => $error->getResponseBody()
+		);
+		$this->log->log_error($error->getOAuthHelperError());
+	}
+
+/* =============================================================
+	ProcessWire Module Functions
+============================================================= */
+	public function __construct() {
+		$this->response = self::DEFAULT_RESPONSE;
+	}
+	
+	public function init() {
+		$modules = $this->wire('modules');
+		$this->authentication = $modules->get('QuickBooksAuthentication');
+		$this->log = $modules->get('QuickBooksLogger');
+	}
+
+	/**
+	 * ProcessWire Module Info
+	 *
+	 * @return void
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'QuickBooks',
+			'version' => 101,
+			'summary' => 'QuickBooks',
+			'singular' => true,
+			'autoload' => true,
+			'installs' => array(
+				'QuickBooksCredentials',
+				'QuickBooksAuthentication',
+				'QuickBooksCustomer',
+			),
+			'requires' => array(
+				'QuickBooksLogger',
+			)
+		);
+	}
+}

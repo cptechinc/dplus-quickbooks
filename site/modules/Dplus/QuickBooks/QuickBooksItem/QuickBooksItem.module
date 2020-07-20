@@ -1,0 +1,50 @@
+<?php namespace ProcessWire;
+
+use CustomerQuery, Customer;
+
+use QuickBooksOnline\API\Facades\Item as FacadeItem;
+
+/**
+ * Wrapper Class for Handling Item Import / Exports to QuickBooks
+ * 
+ * @property QuickBooksItemApi $api QuickBooks Item API Caller
+ */
+class QuickBooksItem extends WireData implements Module {
+	public function connect() {
+		$this->api->connect();
+	}
+
+	public function create_defaults() {
+		$taxed = $this->model->create_dplus_taxed_item();
+		$item = FacadeItem::create($taxed);
+		return $this->api->create($item);
+	}
+
+	
+/* =============================================================
+	ProcessWire Module Functions
+============================================================= */
+	public function init() {
+		$this->api   = $this->wire('modules')->get('QuickBooksItemApi');
+		$this->model = $this->wire('modules')->get('QuickBooksItemModel');
+	}
+
+	/**
+	 * ProcessWire Module Info
+	 *
+	 * @return array
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'QuickBooks Invoice Factory',
+			'version' => 101,
+			'summary' => 'Handles Requests to Update QuickBooks Invoice',
+			'singular' => true,
+			'autoload' => true,
+			'requires' => 'QuickBooks',
+			'installs' => array(
+				'QuickBooksItemApi',
+			)
+		);
+	}
+}

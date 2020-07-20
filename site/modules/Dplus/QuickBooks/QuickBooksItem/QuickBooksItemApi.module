@@ -1,0 +1,91 @@
+<?php namespace ProcessWire;
+
+use QuickBooksOnline\API\DataService\DataService;
+
+use QuickBooksOnline\API\Facades\Item as ItemApi;
+use QuickBooksOnline\API\Data\IPPItem;
+
+/**
+ * QuickBooks Invoice API Caller
+ * @property DataService $api QuickBooks API Service
+ * NonInventory
+ */
+class QuickBooksItemApi extends QuickBooks implements Module {
+
+	public function create(IPPItem $item) {
+		$result = $this->api->Add($item);
+		$error = $this->api->getLastError();
+
+		if ($error) {
+			$this->api_error($error);
+		} else {
+			$this->response['result']['item'] = $result;
+		}
+		return $this->response;
+	}
+	
+	
+	/**
+	 * Return If Our Invoice Number Exists at QuickBooks
+	 *
+	 * @param  string $itemID
+	 * @return bool
+	 */
+	public function exists($itemID) {
+		$result = $this->api->Query("SELECT COUNT(*) FROM Item WHERE Name='$itemID'");
+		$error = $this->api->getLastError();
+
+		if ($error) {
+			$this->api_error($error);
+			return false;
+		} else {
+			return boolval($result);
+		}
+	}
+	/**
+	 * Return QuickBooks Invoice
+	 *
+	 * @param  string $itemID
+	 * @return InvoiceData
+	 */
+	public function read($itemID) {
+		$result = $this->api->Query("SELECT * FROM Item WHERE Name='$itemID'");
+		$error = $this->api->getLastError();
+
+		if ($error) {
+			$this->api_error($error);
+			return false;
+		} else {
+			return $result;
+		}
+	}
+
+/* =============================================================
+	ProcessWire Module Functions
+============================================================= */
+	public function init() {
+		parent::init();
+	}
+
+	public function className($options = NULL) {
+		return 'QuickBooksItemApi';
+	}
+
+	/**
+	 * ProcessWire Module Info
+	 *
+	 * @return void
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'QuickBooks Item API',
+			'version' => 101,
+			'summary' => 'Handles Quickbooks Item API Calls',
+			'singular' => true,
+			'autoload' => true,
+			'requires' => array(
+				'QuickBooks',
+			),
+		);
+	}
+}

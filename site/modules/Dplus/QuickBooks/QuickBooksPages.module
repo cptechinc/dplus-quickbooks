@@ -1,0 +1,85 @@
+<?php namespace ProcessWire;
+
+/**
+ * class QuickBooksPages
+ *
+ * Installs fields, templates, pages, hooks necessary for Top Menus
+ * NOTE: Also installs the basic fields, templates, to build the rest of the Application
+ */
+class QuickBooksPages extends PwPages implements Module {
+	const FIELDS = array();
+
+	const TEMPLATES = array(
+		'build' => array(
+			'name'   => 'build',
+			'fields' => array('summary'),
+			'paginated' => false
+		),
+		'callback' => array(
+			'name'   => 'callback',
+			'fields' => array('summary'),
+			'paginated' => false
+		),
+		'customer' => array(
+			'name'   => 'customer',
+			'fields' => array('summary'),
+			'paginated' => false
+		),
+		'invoice' => array(
+			'name'   => 'invoice',
+			'fields' => array('invoice'),
+			'paginated' => false
+		)
+	);
+
+	const PAGES = array(
+		'build' => array(
+			'template' => 'build',
+			'name'     => 'build',
+			'title'    => 'Rebuild Pages',
+			'summary'  => 'Rebuild Pages',
+			'parent'   => '/'
+		),
+		'callback' => array(
+			'template' => 'callback',
+			'name'     => 'callback',
+			'title'    => 'Get Token',
+			'summary'  => 'Get Token',
+			'parent'   => '/'
+		),
+		'customer' => array(
+			'template' => 'customer',
+			'name'     => 'customer',
+			'title'    => 'Customer',
+			'summary'  => 'QuickBooks Customer',
+			'parent'   => '/'
+		),
+		'invoice' => array(
+			'template' => 'invoice',
+			'name'     => 'invoice',
+			'title'    => 'Invoice',
+			'summary'  => 'QuickBooks Invoice',
+			'parent'   => '/'
+		),
+	);
+
+/* =============================================================
+	ProcessWire Module Functions
+============================================================= */
+
+	/**
+	 * ProcessWire Module Info
+	 *
+	 * @return void
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'QuickBooks Pages Module',
+			'version' => 101,
+			'summary' => 'Installs and creates QuickBooks Pages',
+			'singular' => true,
+			'autoload' => true,
+			'requires' => array('PwPages'),
+		);
+	}
+}

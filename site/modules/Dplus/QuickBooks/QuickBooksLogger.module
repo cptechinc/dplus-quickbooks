@@ -1,0 +1,31 @@
+<?php namespace ProcessWire;
+
+class QuickBooksLogger extends WireData implements Module {
+	const LOG_ERROR = 'quickbooks-error';
+
+	public function log_error($msg, $source = 'QuickBooks') {
+		$this->log->save(self::LOG_ERROR, "[$source] : $msg");
+	}
+
+/* =============================================================
+	ProcessWire Module Functions
+============================================================= */
+	public function init() {
+		$this->log = $this->wire('log');
+	}
+
+	/**
+	 * ProcessWire Module Info
+	 *
+	 * @return void
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'QuickBooks Logger',
+			'version' => 101,
+			'summary' => 'Logs API Errors',
+			'singular' => true,
+			'autoload' => true
+		);
+	}
+}

@@ -1,0 +1,47 @@
+<?php namespace ProcessWire;
+
+/**
+ * Wrapper Class for QuickBooks Customer Methods
+ * Handles Imports
+ * 
+ * @property QuickBooksCustomerDplus $dplus Handles Calls to QuickBooks from Dplus Data
+ * @property QuickBooksCustomerQb    $qb    Handles Calls to QuickBooks from QuickBooks Data
+ * 
+ */
+class QuickBooksCustomer extends WireData implements Module {
+	public function connect() {
+		$this->dplus->connect();
+		$this->qb->connect();
+	}
+	
+/* =============================================================
+	ProcessWire Module Functions
+============================================================= */
+	public function init() {
+		$this->dplus  = $this->wire('modules')->get('QuickBooksCustomerDplus');
+		$this->qb     = $this->wire('modules')->get('QuickBooksCustomerQb');
+	}
+
+
+	/**
+	 * ProcessWire Module Info
+	 *
+	 * @return void
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'QuickBooks Customer Factory',
+			'version' => 101,
+			'summary' => 'Handles Requests to Update QuickBooks Customers',
+			'singular' => true,
+			'autoload' => true,
+			'requires' => 'QuickBooks',
+			'installs' => array(
+				'QuickBooksCustomerApi',
+				'QuickBooksCustomerModel',
+				'QuickBooksCustomerDplus',
+				'QuickBooksCustomerQb',
+			)
+		);
+	}
+}

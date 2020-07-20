@@ -1,0 +1,143 @@
+<?php namespace ProcessWire;
+
+use QuickBooksOnline\API\Facades\Customer as QbCustomerApi;
+use QuickBooksOnline\API\Data\IPPCustomer as QbCustomerData;
+use QuickBooksOnline\API\DataService\DataService;
+
+/**
+ * QuickBooks Customer API Caller
+ * @property DataService $api QuickBooks API Service
+ */
+class QuickBooksCustomerApi extends QuickBooks implements Module {
+	const QUICKBOOKS_FIELD_CUSTID = 'CompanyName';
+
+	/**
+	 * Returns 
+	 *
+	 * @param QbCustomerData $customer
+	 * @return void
+	 */
+	public function create(QbCustomerData $customer) {
+		$this->clear_response();
+		$result = $this->api->Add($customer);
+		$error  = $this->api->getLastError();
+
+		if ($error) {
+			$this->api_error($error);
+		} else {
+			$this->response['result']['customer'] = $result;
+		}
+		return $this->response;
+	}
+
+	/**
+	 * Update QuickBooks Customer
+	 *
+	 * @param  QbCustomerData $original
+	 * @param  array          $new
+	 * @return array
+	 */
+	public function update(QbCustomerData $original, array $new) {
+		$updated = QbCustomerApi::update($original, $new);
+		$result = $this->api->Update($updated);
+		$error  = $this->api->getLastError();
+
+		if ($error) {
+			$this->api_error($error);
+		} else {
+			$this->response['result']['customer'] = $result;
+		}
+		return $this->response;
+	}
+
+
+	/**
+	 * Return Array of Results for getting Customer from QuickBooks
+	 *
+	 * @param  string $custID Customer ID (dplus)
+	 * @return QbCustomerData
+	 */
+	public function read_by_id_dplus($custID) {
+		$field = self::QUICKBOOKS_FIELD_CUSTID;
+		$entities = $this->api->Query("SELECT * FROM Customer where $field='$custID'");
+		return reset($entities);
+	}
+
+	/**
+	 * Returns if Customer Exists at QuickBooks based on their ID
+	 *
+	 * @param  string $custID Customer ID (dplus
+	 * @return void
+	 */
+	public function exists_id_dplus($custID) {
+		$field = self::QUICKBOOKS_FIELD_CUSTID;
+		$result = $this->api->Query("SELECT COUNT(*) FROM Customer where $field='$custID'");
+		$error = $this->api->getLastError();
+
+		if ($error) {
+			$this->api_error($error);
+			return false;
+		} else {
+			return $result;
+		}
+	}
+
+	/**
+	 * Return Array of Results for getting Customer from QuickBooks
+	 *
+	 * @param  string $id Customer ID (quickbooks)
+	 * @return QbCustomerData
+	 */
+	public function read_by_id_qb($id) {
+		$entities = $this->api->Query("SELECT * FROM Customer where Id='$id'");
+		return reset($entities);
+	}
+
+	/**
+	 * Returns if Customer Exists at QuickBooks based on their ID
+	 *
+	 * @param  string $id Customer ID (quickbooks)
+	 * @return void
+	 */
+	public function exists_id_qb($id) {
+		$result = $this->api->Query("SELECT COUNT(*) FROM Customer where Id='$id'");
+		$error = $this->api->getLastError();
+
+		if ($error) {
+			$this->api_error($error);
+			return false;
+		} else {
+			return $result;
+		}
+	}
+
+/* =============================================================
+	ProcessWire Module Functions
+============================================================= */
+	public function init() {
+		parent::init();
+		$this->customerm = $this->wire('modules')->get('QuickBooksCustomerModel');
+	}
+
+	public function className($options = NULL) {
+		return 'QuickBooksInvoiceApi';
+	}
+
+	/**
+	 * ProcessWire Module Info
+	 *
+	 * @return void
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'QuickBooks Customer API',
+			'version' => 101,
+			'summary' => 'Handles Quickbooks Customer API Calls',
+			'singular' => true,
+			'autoload' => true,
+			'requires' => array(
+				'QuickBooks',
+			),
+		);
+	}
+}

@@ -1,0 +1,139 @@
+<?php namespace ProcessWire;
+
+use SalesOrderQuery, SalesOrder;
+use SalesHistoryQuery, SalesHistory;
+
+/**
+ * Class for Reading SalesOrder / SalesHistory from Dplus Database
+ */
+class QuickBooksInvoiceModel extends WireData implements Module {
+	/**
+	 * Returns if Customer ID exists
+	 *
+	 * @param  string $ordn
+	 * @return bool
+	 */
+	public function exists($ordn) {
+		return $this->exists_order($ordn) == true ? true : $this->exists_history($ordn);
+	}
+
+	/**
+	 * Return if Sales Order Exists
+	 *
+	 * @param  string $ordn
+	 * @return bool
+	 */
+	public function exists_order($ordn) {
+		$q = SalesOrderQuery::create();
+		$q->filterByOrdernumber($ordn);
+		return boolval($q->count());
+	}
+
+	/**
+	 * Return if Sales Order Exists in History
+	 *
+	 * @param  string $ordn
+	 * @return bool
+	 */
+	public function exists_history($ordn) {
+		$q = SalesHistoryQuery::create();
+		$q->filterByOrdernumber($ordn);
+		return boolval($q->count());
+	}
+	
+	/**
+	 * Return SalesOrder|SalesHistory
+	 *
+	 * @param  string $ordn
+	 * @return SalesOrder|SalesHistory
+	 */
+	public function order($ordn) {
+		if ($this->exists_order($ordn)) {
+			return $this->order_order($ordn);
+		} elseif ($this->exists_history($ordn)) {
+			return $this->order_history($ordn);
+		}
+	}
+
+	/**
+	 * Return SalesOrder
+	 *
+	 * @param  string $ordn
+	 * @return SalesOrder
+	 */
+	public function order_order($ordn) {
+		$q = SalesOrderQuery::create();
+		return $q->findOneByOrderNumber($ordn);
+	}
+
+	/**
+	 * Return SalesHistory
+	 *
+	 * @param  string $ordn
+	 * @return SalesHistory
+	 */
+	public function order_history($ordn) {
+		$q = SalesHistoryQuery::create();
+		return $q->findOneByOrderNumber($ordn);
+	}
+
+/* =============================================================
+	QuickBook Conversion Functions
+============================================================= */
+	/**
+	 * Create QB Invoice  array from Dplus Order
+	 *
+	 * @param  SalesOrder|SalesHistory $customer
+	 * @return array
+	 */
+	public function qb_invoice_array($order) {
+		$customerm = $this->wire('modules')->get('QuickBooksCustomerModel');
+		$custID_qb = $customerm->get_externalref($order->custid);
+		return [
+			"DocNumber" => $order->ordernumber,
+			"Line" => [
+				[
+					"Amount" => $order->total_total,
+					"DetailType" => "SalesItemLineDetail",
+					"SalesItemLineDetail" => [
+						"ItemRef" => [
+							"value" => 2,
+							"name" => "Hours"
+						]
+					]
+				]
+			],
+			"CustomerRef"=> [
+				"value"=> $custID_qb
+			],
+			"BillEmail" => [
+				"Address" => $order->email
+			],
+			// "BillEmailCc" => [
+			// 	"Address" => "a@intuit.com"
+			// ],
+			// "BillEmailBcc" => [
+			// 	"Address" => "v@intuit.com"
+			// ]
+		];
+	}
+
+/* =============================================================
+	ProcessWire Module Functions
+============================================================= */
+	/**
+	 * ProcessWire Module Info
+	 *
+	 * @return void
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'QuickBooks Invoice Model',
+			'version' => 101,
+			'summary' => 'Handles Quickbooks Invoice Data Modeling',
+			'singular' => true,
+			'autoload' => true,
+			'requires' => array()
+		);
+	}
+	}

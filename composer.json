@@ -1,0 +1,35 @@
+{
+	"name": "cptechinc/quickbooks-dplus",
+	"type": "library",
+	"description": "ProcessWire CMS/CMF",
+	"keywords": [ "processwire", "cms","cmf", "content management system" ],
+	"license": "MPL-2.0",
+	"homepage": "https://processwire.com",
+	"minimum-stability": "dev",
+	"repositories": [
+		{
+			"type": "git",
+			"url": "https://github.com/cptechinc/purl.git"
+		}
+	],
+	"authors": [
+		{
+			"name": "Paul Gomez",
+			"email": "paul@cptechinc.com",
+			"homepage": "https://www.cptechinc.com",
+			"role": "Developer"
+		}
+	],
+	"require": {
+		"php": ">=5.3.8",
+		"ext-gd": "*",
+		"quickbooks/v3-php-sdk": "^5.3",
+		"guzzlehttp/guzzle": "^7.0",
+		"jwage/purl": "dev-cptechinc",
+		"cptechinc/dplus-model": "dev-master",
+		"propel/propel": "^2.0@dev"
+	},
+	"autoload": {
+		"files": [ "wire/core/ProcessWire.php" ]
+	}
+}
